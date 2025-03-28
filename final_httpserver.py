@@ -1,7 +1,7 @@
 import socket
 import os
 import threading
-
+import sqlite3
 # Define the HTTP response template
 HTTP_OK = "HTTP/1.1 200 OK\r\n"
 HTTP_NOT_FOUND = "HTTP/1.1 404 Not Found\r\n"
@@ -56,6 +56,17 @@ def handle_get(path, client_socket):
         response = HTTP_NOT_FOUND + CONTENT_TYPE_HTML + "\r\n\r\n"
         client_socket.send(response.encode() + b"<h1>404 Not Found</h1>")
 
+def connect_db():
+    return sqlite3.connect('mydatabase.db')
+
+def create_table():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS clients
+                      (name TEXT, age INTEGER)''')
+    conn.commit()
+    conn.close()
+   
 # Handle POST request
 def handle_post(path, body, client_socket):
     if not body:
@@ -65,8 +76,20 @@ def handle_post(path, body, client_socket):
         return
     
     print(f"Received POST data for {path}: {body}")  # Log the POST body
-    
-    # Handle /submit path
+
+    body_params = dict(param.split('=') for param in body.split('&'))
+    name = body_params.get('name')
+    age = body_params.get('age')
+
+#store the data in the SQLIte database
+    if name and age:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO clients (name, age) VALUES (?, ?)", (name, age))    
+        conn.commit()
+        conn.close()
+
+   # Handle /submit path
     if path == "/submit":
         response_body = f"""
         <html>
